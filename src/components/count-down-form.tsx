@@ -4,9 +4,19 @@ import { Accountants } from './accountants'
 import { useForm } from 'react-hook-form'
 import { TaskCreateSchema, type TaskDTO } from '../schema/task'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useState } from 'react'
+import { HandPalm } from '@phosphor-icons/react'
+import { Button } from './button'
+import type { CycleProps } from '../interfaces'
+import { useHistoryContext } from '../context/history-context'
+
 
 export function CountDownForm() {
 
+    const [cycles, setCycles] = useState<CycleProps[]>([])
+    const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
+    const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
+    const { setHistory } = useHistoryContext();
     //const [isRunning, setIsRunning] = useState<boolean>(false);
 
     const { register, handleSubmit, watch, reset, formState: { isLoading, errors } } = useForm<TaskDTO>({
@@ -17,14 +27,46 @@ export function CountDownForm() {
         }
     });
 
-    const handleCreateNewCycle = (data: TaskDTO) => {
-        console.log(data);
+    const handleCreateNewCycle = ({ minutesAmount, task }: TaskDTO) => {
+        const id = String(new Date().getTime());
+        const newCycle: CycleProps = {
+            id,
+            task,
+            minutesAmount,
+        }
 
+        setCycles((prev) => [...prev, newCycle]);
+        setHistory((prev) => [...prev, newCycle]);
+        setActiveCycleId(id);
         reset();
     }
 
     const task = watch('task');
     const isSubmitDisabled = !task || isLoading;
+    const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+    const totalSeconds = activeCycle ? activeCycle.minutesAmount * 60 : 0;
+    const currentSeconds = activeCycle ? totalSeconds - amountSecondsPassed : 0;
+    const minutesAmount = Math.floor(currentSeconds / 60);
+    const secondsAmount = currentSeconds % 60;
+    const minutes = String(minutesAmount).padStart(2, '0');
+    const seconds = String(secondsAmount).padStart(2, '0');
+
+
+    useEffect(() => {
+        if (activeCycle && currentSeconds > 0) {
+            const interval = setInterval(() => {
+                setAmountSecondsPassed((prev) => prev + 1);
+            }, 1000);
+
+            return () => clearInterval(interval);
+        }
+    }, [activeCycle, currentSeconds]);
+
+    const handleInterruptCycle = () => {
+        setCycles((prev) => prev.filter((cycle) => cycle.id !== activeCycleId));
+        setActiveCycleId(null);
+        setAmountSecondsPassed(0);
+    }
 
 
     return (
@@ -58,17 +100,31 @@ export function CountDownForm() {
             </div>
 
             <div className='flex items-center gap-2 flex-wrap text-[10rem] font-bold space-x-0.5'>
-                <Accountants>0</Accountants>
-                <Accountants>0</Accountants>
+                <Accountants>{minutes[0]}</Accountants>
+                <Accountants>{minutes[1]}</Accountants>
                 <Separator>:</Separator>
-                <Accountants>0</Accountants>
-                <Accountants>0</Accountants>
+                <Accountants>{seconds[0]}</Accountants>
+                <Accountants>{seconds[1]}</Accountants>
             </div>
 
-            <button type='submit' disabled={isSubmitDisabled} className='text-white flex items-center bg-[#00875F] py-4 justify-center rounded-lg font-bold w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#00B37E] transition-colors duration-300 ease-in-out'>
-                <Play />
+            {!activeCycleId && <Button
+                type='submit'
+                disabled={isSubmitDisabled}
+                variant='success'
+            >
+                <Play className='size-5' />
                 Começar
-            </button>
+            </Button>}
+
+            {activeCycleId &&
+                <Button
+                    type='button'
+                    variant='danger'
+                    onClick={handleInterruptCycle}
+                >
+                    <HandPalm className='size-5' />
+                    Interromper
+                </Button>}
 
         </form>
     )

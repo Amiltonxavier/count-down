@@ -1,11 +1,12 @@
 import { RouterProvider } from "react-router";
 import { router } from "./router";
+import { HistoryContextProvider } from "../context/history-context";
 
 
 export function ProviderApp() {
     return (
-        <div>
+        <HistoryContextProvider>
             <RouterProvider router={router} />
-        </div>
+        </HistoryContextProvider>
     )
 }

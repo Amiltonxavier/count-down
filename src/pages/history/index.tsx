@@ -1,7 +1,9 @@
-import React from 'react'
-import { TableCell, TableHead, TableHeaderCell } from '../../components/table'
+import { TableCell, TableHeaderCell } from '../../components/table'
+import { useHistoryContext } from '../../context/history-context';
 
 export default function HistoryPage() {
+
+    const { history } = useHistoryContext();
     return (
         <div className='flex flex-col gap-4 space-y-2 flex-1'>
             <h2 className='font-bold text-2xl text-gray-100'>Meu histórico</h2>
@@ -17,10 +19,10 @@ export default function HistoryPage() {
                     </thead>
 
                     <tbody>
-                        {Array.from({ length: 10 }, (_, index) => (
-                            <tr key={index}>
-                                <TableCell className='pl-6 w-[50%]'>Projeto {index + 1}</TableCell>
-                                <TableCell>20 minutos</TableCell>
+                        {history.map((item) => (
+                            <tr key={item.id}>
+                                <TableCell className='pl-6 w-[50%]'>{item.task}</TableCell>
+                                <TableCell>{item.minutesAmount} minutos</TableCell>
                                 <TableCell>Há 2 meses</TableCell>
                                 <TableCell className='pr-6'>Concluído</TableCell>
                             </tr>

@@ -9,17 +9,23 @@ import { HandPalm } from '@phosphor-icons/react'
 import { Button } from './button'
 import type { CycleProps } from '../interfaces'
 import { useHistoryContext } from '../context/history-context'
+import { differenceInSeconds } from 'date-fns'
+import { Input } from './input'
+import { createNewTask, updateDocument } from '../lib/appwirte'
+import { useUser } from '@clerk/clerk-react'
+import { ID } from 'appwrite'
 
 
 export function CountDownForm() {
+    const { user } = useUser();
 
+    if (!user) return
     const [cycles, setCycles] = useState<CycleProps[]>([])
     const [activeCycleId, setActiveCycleId] = useState<string | null>(null)
     const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
     const { setHistory } = useHistoryContext();
-    //const [isRunning, setIsRunning] = useState<boolean>(false);
 
-    const { register, handleSubmit, watch, reset, formState: { isLoading, errors } } = useForm<TaskDTO>({
+    const { register, handleSubmit, watch, reset, formState: { isLoading } } = useForm<TaskDTO>({
         resolver: zodResolver(TaskCreateSchema),
         defaultValues: {
             task: '',
@@ -28,17 +34,21 @@ export function CountDownForm() {
     });
 
     const handleCreateNewCycle = ({ minutesAmount, task }: TaskDTO) => {
-        const id = String(new Date().getTime());
+        const id = ID.unique();
         const newCycle: CycleProps = {
             id,
             task,
             minutesAmount,
+            startDate: new Date(),
         }
 
         setCycles((prev) => [...prev, newCycle]);
         setHistory((prev) => [...prev, newCycle]);
         setActiveCycleId(id);
+        setAmountSecondsPassed(0);
         reset();
+
+        createNewTask({ id: id, task: newCycle.task, minutesAmount: newCycle.minutesAmount, startDate: newCycle.startDate, userId: user.id })
     }
 
     const task = watch('task');
@@ -53,33 +63,79 @@ export function CountDownForm() {
 
 
     useEffect(() => {
-        if (activeCycle && currentSeconds > 0) {
-            const interval = setInterval(() => {
-                setAmountSecondsPassed((prev) => prev + 1);
+        let interval: number;
+
+        if (activeCycle) {
+            interval = setInterval(() => {
+                const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate)
+
+                if (secondsDifference >= totalSeconds) {
+                    setCycles((state) => state.map(cycle => {
+                        if (cycle.id === activeCycleId) {
+                            return {
+                                ...cycle, finishedDate: new Date
+                            }
+                        }
+                        return cycle;
+                    }));
+                    setAmountSecondsPassed(totalSeconds)
+                    clearInterval(interval)
+                    setActiveCycleId(null);
+                } else {
+                    setAmountSecondsPassed(secondsDifference);
+                }
+
             }, 1000);
 
             return () => clearInterval(interval);
         }
-    }, [activeCycle, currentSeconds]);
+    }, [activeCycle, totalSeconds, activeCycleId]);
+
+    useEffect(() => {
+        if (activeCycle) document.title = `${minutes}:${seconds}`
+    }, [minutes, seconds, activeCycle])
 
     const handleInterruptCycle = () => {
-        setCycles((prev) => prev.filter((cycle) => cycle.id !== activeCycleId));
+        setCycles((state) => {
+            const updatedCycles = state.map((cycle) => {
+                if (cycle.id === activeCycleId) {
+                    const updatedCycle = { ...cycle, interruptedDate: new Date() };
+                    updateDocument(activeCycleId, updatedCycle);
+                    return updatedCycle;
+                }
+                return cycle;
+            });
+
+            return updatedCycles;
+        });
+
         setActiveCycleId(null);
         setAmountSecondsPassed(0);
-    }
-
+    };
 
     return (
-        <form onSubmit={handleSubmit(handleCreateNewCycle)} className="flex flex-col gap-4 items-center space-y-14">
+        <form onSubmit={handleSubmit(handleCreateNewCycle)} className="flex flex-col gap-4 items-center space-y-4">
             <div className='flex items-center gap-2 flex-wrap'>
-                <label htmlFor="taskinput" className='font-bold text-lg'>Vou trabalhar em</label>
-                <input type="text" id="taskinput"
+                <label htmlFor="taskinput" className="font-bold text-lg">
+                    {activeCycle ? "Estou trabalhando em" : "Vou trabalhar em"}
+                </label>
+                <Input
+                    type="text" id="taskinput"
                     {...register('task', { required: true })}
                     placeholder='Dê um nome para o seu projeto'
                     list="taskinputlist"
                     autoComplete='off'
-                    className='flex-1  font-bold text-[1.125rem] outline-none border-b-2 border-gray bg-transparent h-10 px-2 text-gray-100 focus-within:shadow-none focus-within:border-gray-500' />
-
+                    defaultValue={activeCycle?.task}
+                    disabled={!!activeCycle}
+                />
+                {/*    <input type="text" id="taskinput"
+                    {...register('task', { required: true })}
+                    placeholder='Dê um nome para o seu projeto'
+                    list="taskinputlist"
+                    autoComplete='off'
+                    disabled={!!activeCycle}
+                    className='flex-1  font-bold text-[1.125rem] outline-none border-b-2 border-gray bg-transparent h-10 px-2 text-gray-100 focus-within:shadow-none focus-within:border-green-500' />
+ */}
                 <datalist id="taskinputlist" className='bg-gray-800 w-full'>
                     <option value="Projeto 1" />
                     <option value="Projeto 2" />
@@ -88,13 +144,17 @@ export function CountDownForm() {
                     <option value="Projeto 5" />
                 </datalist>
 
-                <label htmlFor="minutesAmount" className='font-bold text-lg'>durante</label>
+                <label htmlFor="minutesAmount" className="font-bold text-lg">
+                    {activeCycle ? "por" : "durante"}
+                </label>
                 <input
                     type="number"
                     {...register('minutesAmount', { valueAsNumber: true })}
                     step={5}
                     min={5}
                     max={60}
+                    //defaultValue={activeCycle?.minutesAmount}
+                    disabled={!!activeCycle}
                     placeholder='00' className='tex-center placeholder:text-center w-16 flex-1  font-bold text-[1.125rem] outline-none border-b-2 border-gray bg-transparent h-10 px-2 text-gray-100 focus-within:shadow-none focus-within:border-gray-500' />
                 <label htmlFor="" className='font-bold text-lg'>minutos</label>
             </div>
@@ -107,16 +167,7 @@ export function CountDownForm() {
                 <Accountants>{seconds[1]}</Accountants>
             </div>
 
-            {!activeCycleId && <Button
-                type='submit'
-                disabled={isSubmitDisabled}
-                variant='success'
-            >
-                <Play className='size-5' />
-                Começar
-            </Button>}
-
-            {activeCycleId &&
+            {activeCycleId ?
                 <Button
                     type='button'
                     variant='danger'
@@ -124,7 +175,19 @@ export function CountDownForm() {
                 >
                     <HandPalm className='size-5' />
                     Interromper
-                </Button>}
+                </Button>
+                :
+                <Button
+                    type='submit'
+                    disabled={isSubmitDisabled}
+                    variant='success'
+                >
+                    <Play className='size-5' />
+                    Começar
+                </Button>
+
+            }
+
 
         </form>
     )

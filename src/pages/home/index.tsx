@@ -1,4 +1,4 @@
-import { CountDownForm } from "../../components/count-down-form";
+import { CountDownForm } from "./partials/count-down-form";
 
 
 export default function HomePage() {

@@ -1,6 +1,15 @@
-import { Client, Databases, ID } from "appwrite";
+import { Client, Databases, Models, Query } from "appwrite";
 import { env } from "../env";
-import type { ICycle } from "../interfaces";
+
+export interface ICycle extends Models.Document {
+  id: string;
+  minutesAmount: number;
+  startDate: string;
+  task: string;
+  userId: string;
+  finishedDate?: string;
+  interruptedDate?: string;
+}
 
 //const client = new Client();
 //client.setEndpoint("https://cloud.appwrite.io/v1");
@@ -26,11 +35,20 @@ export const createNewTask = async (data: ICycle) => {
   }
 };
 
-export const listDocuments = async () => {
+export const listDocuments = async (
+  userId: string,
+  page?: number
+): Promise<ICycle[]> => {
   try {
     const response = await database.listDocuments(
       env.VITE_APP_DATABASE_ID,
-      env.VITE_APP_COLLECTION_ID
+      env.VITE_APP_COLLECTION_ID,
+      [
+        Query.equal("userId", userId),
+        Query.limit(10),
+        Query.orderDesc("$createdAt"),
+        Query.offset(page ? page : 0),
+      ]
     );
     return response.documents;
   } catch (err) {
@@ -39,16 +57,24 @@ export const listDocuments = async () => {
   }
 };
 
-export const updateDocument = async (
-  documentId: string,
-  data: Partial<ICycle>
-) => {
+export const updateDocument = async (data: Partial<ICycle>) => {
+  const { id } = data;
   try {
+    if (!id) {
+      throw new Error("ID is required to update the document");
+    }
     await database.updateDocument(
       env.VITE_APP_DATABASE_ID,
       env.VITE_APP_COLLECTION_ID,
-      documentId,
-      data
+      id,
+      {
+        minutesAmount: data.minutesAmount,
+        startDate: data.startDate,
+        task: data.task,
+        userId: data.userId,
+        finishedDate: data.finishedDate || undefined,
+        interruptedDate: data.interruptedDate || undefined,
+      }
     );
   } catch (err) {
     console.error("Erro ao atualizar documento:", err);

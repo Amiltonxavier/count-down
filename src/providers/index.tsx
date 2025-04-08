@@ -8,6 +8,7 @@ import { CountDownContextProvider } from "@/context/count-down-context";
 import { CyclesContextProvider } from "@/context/cycles-context";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryCLient } from "@/lib/tanstack-query";
+import { CountUpProvider } from "@/context/count-up-context";
 
 
 export function ProviderApp() {
@@ -16,13 +17,16 @@ export function ProviderApp() {
             publishableKey={env.VITE_APP_CLERK_PUBLISHABLE_KEY}
             afterSignOutUrl={CONSTANTS.ROUTES.HOME.path}
         >
+
             <QueryClientProvider client={queryCLient}>
-                <CyclesContextProvider>
-                    <CountDownContextProvider>
-                        <Toaster richColors position="top-left" />
-                        <RouterProvider router={router} />
-                    </CountDownContextProvider>
-                </CyclesContextProvider>
+                <CountUpProvider>
+                    <CyclesContextProvider>
+                        <CountDownContextProvider>
+                            <Toaster richColors position="top-left" />
+                            <RouterProvider router={router} />
+                        </CountDownContextProvider>
+                    </CyclesContextProvider>
+                </CountUpProvider>
             </QueryClientProvider>
         </ClerkProvider>
     )

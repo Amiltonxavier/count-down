@@ -9,11 +9,15 @@ import { Button } from '@/components/button'
 import { useCyclesContext } from '@/context/cycles-context'
 import { useCountDownContext } from '@/context/count-down-context'
 import { CountdownDisplay } from './count-down-display'
+import { useState } from 'react'
+import { CountUp } from './count-up'
 
 
 export function CountDownForm() {
-    const { activeCycle, handleCreateNewCycle, handleInterruptCycle, } = useCountDownContext();
+    const { activeCycle, handleCreateNewCycle, handleInterruptCycle } = useCountDownContext();
     const { activeCycleId } = useCyclesContext();
+    const [countType, setCountType] = useState<'countdown' | 'countup'>('countdown');
+
     const form = useForm<TaskDTO>({
         resolver: zodResolver(TaskCreateSchema),
         defaultValues: {
@@ -27,68 +31,102 @@ export function CountDownForm() {
 
     const onSubmit = (data: TaskDTO) => {
         handleCreateNewCycle(data);
-        //  form.reset();
+        // form.reset();
+    };
+
+    const handleCountTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setCountType(event.target.value as 'countdown' | 'countup');
     };
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 items-center space-y-4">
-            <div className='flex items-center gap-2 flex-wrap'>
-                <label htmlFor="taskinput" className="font-bold text-lg">
-                    {activeCycle ? "Estou trabalhando em" : "Vou trabalhar em"}
-                </label>
-                <Input
-                    type="text" id="taskinput"
-                    {...form.register('task', { required: true })}
-                    placeholder='Dê um nome para o seu projeto'
-                    list="taskinputlist"
-                    autoComplete='off'
-                    defaultValue={activeCycle?.task}
-                    disabled={!!activeCycle}
-                />
-
-                {/*  <datalist id="taskinputlist">
-                    {cycles.map((cycle) => (
-                        <option key={cycle.id} value={cycle.task} />
-                    ))}, */}
-
-                <label htmlFor="minutesAmount" className="font-bold text-lg">
-                    {activeCycle ? "por" : "durante"}
-                </label>
-
-                <Input
-                    type="number"
-                    {...form.register('minutesAmount', { valueAsNumber: true })}
-                    placeholder='Dê um nome para o seu projeto'
-                    step={5}
-                    min={1}
-                    max={60}
-                    disabled={!!activeCycle}
-                />
-
-                <label htmlFor="" className='font-bold text-lg'>minutos</label>
+        <div className='flex flex-col gap-4 items-center justify-center'>
+            <div className="space-y-2 flex items-center flex-col">
+                <span>Tipo de contagem</span>
+                <div className='flex items-center gap-5'>
+                    <div className='flex items-center gap-2'>
+                        <label htmlFor="countdown">Regressiva</label>
+                        <input
+                            type='radio'
+                            name='type_of_count'
+                            id='countdown'
+                            value='countdown'
+                            onChange={handleCountTypeChange}
+                            checked={countType === 'countdown'}
+                        />
+                    </div>
+                    <div className='flex items-center gap-2'>
+                        <label htmlFor="countup">Progressivo</label>
+                        <input
+                            type='radio'
+                            name='type_of_count'
+                            id='countup'
+                            value='countup'
+                            onChange={handleCountTypeChange}
+                            checked={countType === 'countup'}
+                        />
+                    </div>
+                </div>
             </div>
 
-            <CountdownDisplay />
+            {countType === 'countdown' ? (
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 items-center">
+                    <div className='flex items-center gap-2 flex-wrap'>
+                        <label htmlFor="taskinput" className="font-bold text-lg">
+                            {activeCycle ? "Estou trabalhando em" : "Vou trabalhar em"}
+                        </label>
+                        <Input
+                            type="text"
+                            id="taskinput"
+                            {...form.register('task', { required: true })}
+                            placeholder='Dê um nome para o seu projeto'
+                            autoComplete='off'
+                            defaultValue={activeCycle?.task}
+                            disabled={!!activeCycle}
+                        />
 
-            {activeCycleId ?
-                <Button
-                    type='button'
-                    variant='danger'
-                    onClick={handleInterruptCycle}
-                >
-                    <HandPalm className='size-5' />
-                    Interromper
-                </Button>
-                :
-                <Button
-                    type='submit'
-                    disabled={isSubmitDisabled}
-                    variant='success'
-                >
-                    <Play className='size-5' />
-                    Começar
-                </Button>
-            }
-        </form>
-    )
+                        <label htmlFor="minutesAmount" className="font-bold text-lg">
+                            {activeCycle ? "por" : "durante"}
+                        </label>
+
+                        <Input
+                            type="number"
+                            {...form.register('minutesAmount', { valueAsNumber: true })}
+                            placeholder='Tempo em minutos'
+                            step={5}
+                            min={1}
+                            max={60}
+                            disabled={!!activeCycle}
+                        />
+
+                        <label className='font-bold text-lg'>minutos</label>
+                    </div>
+
+                    <CountdownDisplay />
+
+                    {activeCycleId ? (
+                        <Button
+                            type='button'
+                            variant='danger'
+                            onClick={handleInterruptCycle}
+                        >
+                            <HandPalm className='size-5' />
+                            Interromper
+                        </Button>
+                    ) : (
+                        <Button
+                            type='submit'
+                            disabled={isSubmitDisabled}
+                            variant='success'
+                        >
+                            <Play className='size-5' />
+                            Começar
+                        </Button>
+                    )}
+                </form>
+            ) : (
+                <CountUp />
+            )}
+        </div>
+    );
 }
+

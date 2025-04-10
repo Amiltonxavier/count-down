@@ -19,14 +19,16 @@ export function ProviderApp() {
         >
 
             <QueryClientProvider client={queryCLient}>
-                <CountUpProvider>
-                    <CyclesContextProvider>
+
+                <CyclesContextProvider>
+                    <CountUpProvider>
                         <CountDownContextProvider>
                             <Toaster richColors position="top-left" />
                             <RouterProvider router={router} />
                         </CountDownContextProvider>
-                    </CyclesContextProvider>
-                </CountUpProvider>
+                    </CountUpProvider>
+                </CyclesContextProvider>
+
             </QueryClientProvider>
         </ClerkProvider>
     )

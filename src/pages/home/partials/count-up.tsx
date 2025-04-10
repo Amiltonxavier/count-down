@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCountUpContext } from '@/context/count-up-context';
 import { Input } from '@/components/input';
-import { CountdownDisplay } from './count-down-display';
 import { Button } from '@/components/button';
 import { HandPalm, Play } from '@phosphor-icons/react';
+import { Accountants } from '@/components/accountants';
+import { Separator } from '@/components/separator';
 
 const countUpSchema = z.object({
     task: z.string().min(1, 'Informe o nome do projeto'),
@@ -16,7 +17,7 @@ const countUpSchema = z.object({
 type CountUpFormData = z.infer<typeof countUpSchema>;
 
 export function CountUp() {
-    const { activeCycle, activeCycleId, startNewCycle, interruptCycle } = useCountUpContext();
+    const { activeCycle, activeCycleId, startNewCycle, interruptCycle, minutes, seconds } = useCountUpContext();
 
     const form = useForm<CountUpFormData>({
         resolver: zodResolver(countUpSchema),
@@ -46,7 +47,13 @@ export function CountUp() {
                 />
             </div>
 
-            <CountdownDisplay />
+            <div className='flex items-center gap-2 flex-wrap text-[10rem] font-bold space-x-0.5'>
+                <Accountants>{minutes[0]}</Accountants>
+                <Accountants>{minutes[1]}</Accountants>
+                <Separator>:</Separator>
+                <Accountants>{seconds[0]}</Accountants>
+                <Accountants>{seconds[1]}</Accountants>
+            </div>
 
             {activeCycleId ? (
                 <Button

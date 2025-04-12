@@ -21,8 +21,13 @@ const client = new Client()
 
 const database = new Databases(client);
 
-export const createNewTask = async (data: ICycle) => {
-  const { id, minutesAmount, startDate, task, userId } = data;
+export const createNewTask = async ({
+  id,
+  minutesAmount,
+  startDate,
+  task,
+  userId,
+}: ICycle) => {
   try {
     await database.createDocument(
       env.VITE_APP_DATABASE_ID,

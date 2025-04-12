@@ -5,38 +5,23 @@ import { ID } from "appwrite";
 import { toast } from "sonner";
 import type { CycleProps } from "@/interfaces";
 import type { TaskDTO } from "@/schema/task";
-import { createNewTask, updateDocument } from "@/lib/appwirte";
+import { updateDocument } from "@/lib/appwirte";
 import { useCyclesContext } from "./cycles-context";
 
 interface CountDownContextData {
     minutes: string;
     seconds: string;
-    // isSubmitDisabled: boolean;
-    activeCycle: CycleProps | undefined;
+    activeCycle: CycleProps | null;
     handleCreateNewCycle: (data: TaskDTO) => void;
     handleInterruptCycle: () => void;
-    // isLoading: boolean;
 }
 
 export const CountDownContext = createContext({} as CountDownContextData);
 
 export const CountDownContextProvider = ({ children }: { children: React.ReactNode }) => {
     const { user } = useUser();
-    const { cycles, setCycles, activeCycleId, setActiveCycleId, activeCycle } = useCyclesContext();
-
+    const { cycles, setCycles, setActiveCycleId, activeCycle } = useCyclesContext();
     const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
-
-    /*  const {
-         watch,
-         reset,
-         formState: { isLoading },
-     } = useForm<TaskDTO>({
-         resolver: zodResolver(TaskCreateSchema),
-         defaultValues: {
-             task: "",
-             minutesAmount: 0,
-         },
-     }); */
 
     const handleCreateNewCycle = ({ minutesAmount, task }: TaskDTO) => {
         const id = ID.unique();
@@ -50,8 +35,9 @@ export const CountDownContextProvider = ({ children }: { children: React.ReactNo
         setCycles((prev) => [...prev, newCycle]);
         setActiveCycleId(id);
         setAmountSecondsPassed(0);
-        //reset();
 
+        // Salvar no Appwrite (ativar se necessário)
+        /*
         createNewTask({
             id,
             task: newCycle.task,
@@ -59,20 +45,21 @@ export const CountDownContextProvider = ({ children }: { children: React.ReactNo
             startDate: newCycle.startDate,
             userId: user?.id || "",
         });
+        */
     };
 
     const handleInterruptCycle = () => {
+        if (!activeCycle) return;
+
         setCycles((state) => {
-            const updated = state.map((cycle) => {
-                if (cycle.id === activeCycleId) {
+            return state.map((cycle) => {
+                if (cycle.id === activeCycle.id) {
                     const updatedCycle = { ...cycle, interruptedDate: new Date() };
                     updateDocument(updatedCycle);
                     return updatedCycle;
                 }
                 return cycle;
             });
-
-            return updated;
         });
 
         setActiveCycleId(null);
@@ -88,19 +75,16 @@ export const CountDownContextProvider = ({ children }: { children: React.ReactNo
     const minutes = String(minutesAmount).padStart(2, "0");
     const seconds = String(secondsAmount).padStart(2, "0");
 
-    // const task = watch("task");
-    //const isSubmitDisabled = !task || isLoading;
-
     useEffect(() => {
         let interval: ReturnType<typeof setInterval>;
 
         if (activeCycle) {
             interval = setInterval(() => {
-                const secondsDifference = differenceInSeconds(new Date(), activeCycle.startDate);
+                const secondsDifference = differenceInSeconds(new Date(), new Date(activeCycle.startDate));
 
                 if (secondsDifference >= totalSeconds) {
                     const updated = cycles.map((cycle) => {
-                        if (cycle.id === activeCycleId) {
+                        if (cycle.id === activeCycle.id) {
                             const updatedCycle = { ...cycle, finishedDate: new Date() };
                             updateDocument(updatedCycle);
                             return updatedCycle;
@@ -120,7 +104,7 @@ export const CountDownContextProvider = ({ children }: { children: React.ReactNo
         }
 
         return () => clearInterval(interval);
-    }, [activeCycle, totalSeconds, activeCycleId, cycles, setCycles, setActiveCycleId]);
+    }, [activeCycle, totalSeconds, cycles, setCycles, setActiveCycleId]);
 
     useEffect(() => {
         if (activeCycle) {
@@ -133,17 +117,14 @@ export const CountDownContextProvider = ({ children }: { children: React.ReactNo
             value={{
                 minutes,
                 seconds,
-                // isSubmitDisabled,
                 activeCycle,
                 handleCreateNewCycle,
                 handleInterruptCycle,
-                // isLoading,
             }}
         >
             {children}
         </CountDownContext.Provider>
     );
 };
-
 
 export const useCountDownContext = () => useContext(CountDownContext);

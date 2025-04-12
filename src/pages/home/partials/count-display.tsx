@@ -1,10 +1,12 @@
 import { Accountants } from "@/components/accountants";
 import { Separator } from "@/components/separator";
-import { useCountDownContext } from "@/context/count-down-context";
 
+type DisplayProps = {
+    minutes: string;
+    seconds: string;
+};
 
-export function CountdownDisplay() {
-    const { minutes, seconds } = useCountDownContext();
+export function Display({ minutes, seconds }: DisplayProps) {
     return (
         <div className='flex items-center gap-2 flex-wrap text-[10rem] font-bold space-x-0.5'>
             <Accountants>{minutes[0]}</Accountants>

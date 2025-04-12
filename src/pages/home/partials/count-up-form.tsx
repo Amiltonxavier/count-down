@@ -1,14 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-
 import { z } from 'zod';
 import { useCountUpContext } from '@/context/count-up-context';
 import { Input } from '@/components/input';
 import { Button } from '@/components/button';
 import { HandPalm, Play } from '@phosphor-icons/react';
-import { Accountants } from '@/components/accountants';
-import { Separator } from '@/components/separator';
+import { useCyclesContext } from '@/context/cycles-context';
+import { Display } from './count-display';
 
 const countUpSchema = z.object({
     task: z.string().min(1, 'Informe o nome do projeto'),
@@ -16,8 +14,9 @@ const countUpSchema = z.object({
 
 type CountUpFormData = z.infer<typeof countUpSchema>;
 
-export function CountUp() {
-    const { activeCycle, activeCycleId, startNewCycle, interruptCycle, minutes, seconds } = useCountUpContext();
+export function CountUpForm() {
+    const { activeCycleId, startNewCycle, interruptCycle, minutes, seconds } = useCountUpContext();
+    const { activeCycle } = useCyclesContext()
 
     const form = useForm<CountUpFormData>({
         resolver: zodResolver(countUpSchema),
@@ -26,12 +25,15 @@ export function CountUp() {
         },
     });
 
-    const onSubmit = (data: CountUpFormData) => {
-        startNewCycle(data.task);
+    const onSubmit = ({ task }: CountUpFormData) => {
+        startNewCycle(task);
     };
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 items-center">
+        <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4 items-center"
+        >
             <div className='flex items-center gap-2 flex-wrap'>
                 <label htmlFor="taskinput" className="font-bold text-lg">
                     {activeCycle ? "Estou trabalhando em" : "Vou trabalhar em"}
@@ -42,18 +44,13 @@ export function CountUp() {
                     {...form.register('task')}
                     placeholder='Dê um nome para o seu projeto'
                     autoComplete='off'
+                    className='flex-1'
                     defaultValue={activeCycle?.task}
                     disabled={!!activeCycle}
                 />
             </div>
 
-            <div className='flex items-center gap-2 flex-wrap text-[10rem] font-bold space-x-0.5'>
-                <Accountants>{minutes[0]}</Accountants>
-                <Accountants>{minutes[1]}</Accountants>
-                <Separator>:</Separator>
-                <Accountants>{seconds[0]}</Accountants>
-                <Accountants>{seconds[1]}</Accountants>
-            </div>
+            <Display minutes={minutes} seconds={seconds} />
 
             {activeCycleId ? (
                 <Button

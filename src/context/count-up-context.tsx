@@ -3,22 +3,27 @@
 import * as React from 'react';
 import { ID } from 'appwrite';
 import { useCyclesContext } from './cycles-context';
-import { CycleProps } from '@/interfaces';
+import type { CycleProps } from '@/interfaces';
 import { differenceInSeconds } from 'date-fns';
+import { updateDocument } from '@/lib/appwirte';
 
 type CountUpContextType = {
-    activeCycleId: string | null;
     startNewCycle: (task: string) => void;
     interruptCycle: () => void;
     secondsPassed: number;
     minutes: string;
     seconds: string;
+    activeCycle: CycleProps | null;
+};
+
+type CountUpProviderProps = {
+    children: React.ReactNode;
 };
 
 const CountUpContext = React.createContext({} as CountUpContextType);
 
-export function CountUpProvider({ children }: { children: React.ReactNode }) {
-    const { setCycles, activeCycleId, setActiveCycleId, activeCycle } = useCyclesContext();
+export function CountUpProvider({ children }: CountUpProviderProps) {
+    const { setCycles, setActiveCycleId, activeCycle } = useCyclesContext();
     const [secondsPassed, setSecondsPassed] = React.useState(0);
 
     function startNewCycle(task: string) {
@@ -29,12 +34,26 @@ export function CountUpProvider({ children }: { children: React.ReactNode }) {
             startDate: new Date(),
             minutesAmount: 0,
         };
+
         setCycles((prev) => [...prev, newCycle]);
-        setSecondsPassed(0);
         setActiveCycleId(id);
+        setSecondsPassed(0);
     }
 
     function interruptCycle() {
+        if (!activeCycle) return;
+
+        setCycles((state) =>
+            state.map((cycle) => {
+                if (cycle.id === activeCycle.id) {
+                    const updatedCycle = { ...cycle, interruptedDate: new Date() };
+                    updateDocument(updatedCycle);
+                    return updatedCycle;
+                }
+                return cycle;
+            })
+        );
+
         setActiveCycleId(null);
         setSecondsPassed(0);
     }
@@ -46,12 +65,14 @@ export function CountUpProvider({ children }: { children: React.ReactNode }) {
             interval = setInterval(() => {
                 const now = new Date();
                 const start = new Date(activeCycle.startDate);
-
-                setSecondsPassed(differenceInSeconds(now, start));
+                const secondsDifference = differenceInSeconds(now, start);
+                setSecondsPassed(secondsDifference);
             }, 1000);
         }
 
-        return () => clearInterval(interval);
+        return () => {
+            if (interval) clearInterval(interval);
+        };
     }, [activeCycle]);
 
     const minutesAmount = Math.floor(secondsPassed / 60);
@@ -60,17 +81,15 @@ export function CountUpProvider({ children }: { children: React.ReactNode }) {
     const minutes = String(minutesAmount).padStart(2, "0");
     const seconds = String(secondsAmount).padStart(2, "0");
 
-
-
     return (
         <CountUpContext.Provider
             value={{
-                activeCycleId,
                 startNewCycle,
                 interruptCycle,
                 secondsPassed,
                 minutes,
                 seconds,
+                activeCycle,
             }}
         >
             {children}
